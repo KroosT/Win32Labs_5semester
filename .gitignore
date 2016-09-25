@@ -27,3 +27,6 @@
 *.exe
 *.out
 *.app
+/Lab_001/Lab_001.VC.db
+/Lab_001/.vs/Lab_001/v14
+/Lab_001/Lab_001.VC.VC.opendb
