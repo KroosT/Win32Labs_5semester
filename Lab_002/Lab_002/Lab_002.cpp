@@ -30,45 +30,77 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			ClearButton = CreateWindow(L"Button", L"Clear", WS_BORDER | WS_CHILD | WS_VISIBLE, 250, 420, 100, 30, hwnd, (HMENU) ID_CLEAR_BUTTON, NULL, NULL);
 			if (ClearButton == NULL)
 				MessageBox(hwnd, L"Could not create ClearButton.", L"Error", MB_OK | MB_ICONERROR);
-			DeleteButton = CreateWindow(L"Button", L"Delete", WS_BORDER | WS_CHILD | WS_VISIBLE, 450, 420, 100, 30, hwnd, (HMENU) ID_TO_RIGHT_BUTTON, NULL, NULL);
+			DeleteButton = CreateWindow(L"Button", L"Delete", WS_BORDER | WS_CHILD | WS_VISIBLE, 450, 420, 100, 30, hwnd, (HMENU) ID_DELETE_BUTTON, NULL, NULL);
 			if (DeleteButton == NULL)
 				MessageBox(hwnd, L"Could not create DeleteButton.", L"Error", MB_OK | MB_ICONERROR);
-			ToRightButton = CreateWindow(L"Button", L"To Right", WS_BORDER | WS_CHILD | WS_VISIBLE, 600, 420, 100, 30, hwnd, (HMENU) ID_DELETE_BUTTON, NULL, NULL);
+			ToRightButton = CreateWindow(L"Button", L"To Right", WS_BORDER | WS_CHILD | WS_VISIBLE, 600, 420, 100, 30, hwnd, (HMENU) ID_TO_RIGHT_BUTTON, NULL, NULL);
 			if (ToRightButton == NULL)
 				MessageBox(hwnd, L"Could not create ToRightButton.", L"Error", MB_OK | MB_ICONERROR);
 			break;	
+
 		case WM_COMMAND:
 			switch (LOWORD(wParam))
 			{
 				case ID_ADD_BUTTON:
+				{
 					int count = GetWindowTextLength(GetDlgItem(hwnd, ID_TEXT_BOX));
 					if (count > 0)
 					{
-						LPWSTR buf;
-						buf = (LPWSTR)GlobalAlloc(GPTR, count + 1);
+						TCHAR* buf;
+						buf = (TCHAR*)GlobalAlloc(GPTR, sizeof(TCHAR) * (count + 1));
 						GetDlgItemText(hwnd, ID_TEXT_BOX, buf, count + 1);
-						SendDlgItemMessage(hwnd, ID_LIST_BOX1, LB_ADDSTRING, NULL, LPARAM(buf));
+						if (SendDlgItemMessage(hwnd, ID_LIST_BOX1, LB_FINDSTRINGEXACT, NULL, (LPARAM)buf) == LB_ERR)
+							SendDlgItemMessage(hwnd, ID_LIST_BOX1, LB_ADDSTRING, NULL, LPARAM(buf));
 						SetDlgItemText(hwnd, ID_TEXT_BOX, L"");
-						GlobalFree(HANDLE(buf));
+						GlobalFree(buf);
 					}
 					break;
+				}
 				case ID_CLEAR_BUTTON:
+				{
+					SendDlgItemMessage(hwnd, ID_LIST_BOX1, LB_RESETCONTENT, NULL, NULL);
+					SendDlgItemMessage(hwnd, ID_LIST_BOX2, LB_RESETCONTENT, NULL, NULL);
 
 					break;
+				}
 				case ID_DELETE_BUTTON:
+				{
+					int ind = SendDlgItemMessage(hwnd, ID_LIST_BOX1, LB_GETCURSEL, NULL, NULL);
+					if (ind != LB_ERR)
+						SendDlgItemMessage(hwnd, ID_LIST_BOX1, LB_DELETESTRING, ind, NULL);
+
+					ind = SendDlgItemMessage(hwnd, ID_LIST_BOX2, LB_GETCURSEL, NULL, NULL);
+					if (ind != LB_ERR)
+						SendDlgItemMessage(hwnd, ID_LIST_BOX2, LB_DELETESTRING, ind, NULL);
 
 					break;
+				}
 				case ID_TO_RIGHT_BUTTON:
-
+					int ind = SendDlgItemMessage(hwnd, ID_LIST_BOX1, LB_GETCURSEL, NULL, NULL);
+					if (ind != LB_ERR)
+					{
+						int len = SendDlgItemMessage(hwnd, ID_LIST_BOX1, LB_GETTEXTLEN, ind, NULL);
+						TCHAR* buf = (TCHAR*)GlobalAlloc(GPTR, sizeof(TCHAR) * (len + 1));
+						SendDlgItemMessage(hwnd, ID_LIST_BOX1, LB_GETTEXT, ind, (LPARAM)buf);
+						if (SendDlgItemMessage(hwnd, ID_LIST_BOX2, LB_FINDSTRINGEXACT, NULL, (LPARAM)buf) == LB_ERR)
+							SendDlgItemMessage(hwnd, ID_LIST_BOX2, LB_ADDSTRING, NULL, (LPARAM)buf);
+						GlobalFree(buf);
+					}
+					else
+					{
+						MessageBox(hwnd, L"No item selected!", L"Error", MB_OK | MB_ICONERROR);
+					}
 					break;
 			}
 			break;
 		case WM_CLOSE:
 			DestroyWindow(hwnd);
 			break;
+
 		case WM_DESTROY:
 			PostQuitMessage(0);
 			break;
+
 		default:
 			return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
