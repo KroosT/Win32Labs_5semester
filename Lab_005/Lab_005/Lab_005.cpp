@@ -78,7 +78,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	hwnd = CreateWindowEx(
 		WS_EX_CLIENTEDGE,
 		g_szClassName,
-		L"Moving bitmap (Lab_004)",
+		L"Communicated windows (Lab_005)",
 		WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX,
 		CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
 		NULL, NULL, hInstance, NULL);
