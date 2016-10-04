@@ -45,3 +45,5 @@
 *.aps
 /Lab_003/Lab_003.VC.db
 *.opendb
+/Lab_004/.vs/Lab_004/v14
+*.db
