@@ -19,4 +19,28 @@
       <Filter>Файлы исходного кода</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h">
+      <Filter>Заголовочные файлы</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="bitmap1.bmp">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="bitmap2.bmp">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="bitmap3.bmp">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="bitmap4.bmp">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Lab_004.rc">
+      <Filter>Файлы ресурсов</Filter>
+    </ResourceCompile>
+  </ItemGroup>
 </Project>
