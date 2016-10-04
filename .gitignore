@@ -47,3 +47,5 @@
 *.opendb
 /Lab_004/.vs/Lab_004/v14
 *.db
+/Lab_004/Debug
+/Lab_004/Lab_004/Debug
