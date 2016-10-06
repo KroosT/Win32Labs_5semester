@@ -1,6 +1,11 @@
 #include <Windows.h>
 
+#define ID_START_BUTTON 101
+#define ID_STOP_BUTTON 102
+
 LPCWSTR g_szClassName = L"myWindowClass";
+HINSTANCE hInst;
+HWND Start_Button, Stop_Button;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -8,7 +13,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_CREATE:
 	{
-
+		Start_Button = CreateWindow(L"Button", L"Start", WS_CHILD | WS_VISIBLE | WS_BORDER, 200, 500, 100, 30, hwnd,
+			(HMENU)ID_START_BUTTON, hInst, NULL);
+		Stop_Button = CreateWindow(L"Button", L"Stop", WS_CHILD | WS_VISIBLE | WS_BORDER, 500, 500, 100, 30, hwnd,
+			(HMENU)ID_STOP_BUTTON, hInst, NULL);
 		break;
 	}
 	case WM_COMMAND:
@@ -53,6 +61,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	HWND hwnd;
 	MSG Msg;
 
+	hInst = hInstance;
 	wc.cbSize = sizeof(WNDCLASSEX);
 	wc.style = 0;
 	wc.lpfnWndProc = WndProc;
