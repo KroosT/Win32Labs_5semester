@@ -11,6 +11,13 @@ HANDLE threads[3];
 HWND event_btn, cs_btn, start_btn, stop_btn;
 bool stop_flag = TRUE;
 bool thrds_created = FALSE;
+POINT coords;
+
+//if previous_choice FALSE - event, if TRUE - critical section
+bool previous_choice = FALSE;
+
+DWORD WINAPI MoveTrain_EventSynchronization(LPVOID lpParam);
+DWORD WINAPI MoveTrain_CriticalSection(LPVOID lpParam);
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -55,15 +62,39 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					{
 						if (thrds_created)
 						{
-							ResumeThread(threads[0]);
-							ResumeThread(threads[1]);
-							ResumeThread(threads[2]);
+							if ((SendMessage(event_btn, BM_GETCHECK, 1, NULL) && !previous_choice) ||
+								((SendMessage(cs_btn, BM_GETCHECK, 1, NULL) && previous_choice)))
+							{
+								ResumeThread(threads[0]);
+								ResumeThread(threads[1]);
+								ResumeThread(threads[2]);
+							}
+							else if (SendMessage(event_btn, BM_GETCHECK, 1, NULL) && previous_choice)
+							{
+								TerminateThread(threads[0], 0);
+								TerminateThread(threads[1], 0);
+								TerminateThread(threads[2], 0);
+
+								threads[0] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
+								threads[1] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
+								threads[2] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
+							}
+							else if (SendMessage(cs_btn, BM_GETCHECK, 1, NULL) && !previous_choice)
+							{
+								TerminateThread(threads[0], 0);
+								TerminateThread(threads[1], 0);
+								TerminateThread(threads[2], 0);
+
+								threads[0] = CreateThread(NULL, NULL, MoveTrain_CriticalSection, NULL, NULL, NULL);
+								threads[1] = CreateThread(NULL, NULL, MoveTrain_CriticalSection, NULL, NULL, NULL);
+								threads[2] = CreateThread(NULL, NULL, MoveTrain_CriticalSection, NULL, NULL, NULL);
+							}
 						}
 						else
 						{
-							threads[0] = CreateThread(NULL, NULL, func, &args, NULL, NULL);
-							threads[1] = CreateThread(NULL, NULL, func, &args, NULL, NULL);
-							threads[2] = CreateThread(NULL, NULL, func, &args, NULL, NULL);
+							threads[0] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
+							threads[1] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
+							threads[2] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
 						}
 						stop_flag = FALSE;
 					}
@@ -162,4 +193,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		DispatchMessage(&Msg);
 	}
 	return Msg.wParam;
+}
+
+DWORD WINAPI MoveTrain_EventSynchronization(LPVOID lpParam) {
+
+	return 0;
+}
+
+DWORD WINAPI MoveTrain_CriticalSection(LPVOID lpParam) {
+
+	return 0;
 }
