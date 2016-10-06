@@ -10,6 +10,7 @@ HINSTANCE hInst;
 HANDLE threads[3];
 HWND event_btn, cs_btn, start_btn, stop_btn;
 bool stop_flag = TRUE;
+bool thrds_created = FALSE;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -52,7 +53,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				{
 					if (stop_flag)
 					{
-
+						if (thrds_created)
+						{
+							ResumeThread(threads[0]);
+							ResumeThread(threads[1]);
+							ResumeThread(threads[2]);
+						}
+						else
+						{
+							threads[0] = CreateThread(NULL, NULL, func, &args, NULL, NULL);
+							threads[1] = CreateThread(NULL, NULL, func, &args, NULL, NULL);
+							threads[2] = CreateThread(NULL, NULL, func, &args, NULL, NULL);
+						}
 						stop_flag = FALSE;
 					}
 					break;
@@ -62,7 +74,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				{
 					if (!stop_flag)
 					{
-
+						SuspendThread(threads[0]);
+						SuspendThread(threads[1]);
+						SuspendThread(threads[2]);
 						stop_flag = TRUE;
 					}
 					break;
