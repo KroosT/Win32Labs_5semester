@@ -11,14 +11,18 @@ HANDLE threads[3];
 HWND hWnd, event_btn, cs_btn, start_btn, stop_btn;
 bool stop_flag = TRUE;
 bool thrds_created = FALSE;
+bool terminated = FALSE;
 POINT coords;
+POINT start_coords;
+CRITICAL_SECTION cs;
+HANDLE event;
 
 //if previous_choice FALSE - event, if TRUE - critical section
-bool previous_choice = FALSE;
+bool previous_choice = TRUE;
 
 DWORD WINAPI MoveTrain_EventSynchronization(LPVOID lpParam);
 DWORD WINAPI MoveTrain_CriticalSection(LPVOID lpParam);
-void DrawTrain(HDC hdc, int x, int y);
+void DrawTrain(HDC hdc);
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -26,21 +30,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_CREATE:
 		{
-			event_btn = CreateWindow(L"BUTTON", L"Event", WS_VISIBLE | WS_CHILD | BS_RADIOBUTTON, 10, 30, 60, 30,
+			event_btn = CreateWindow(L"BUTTON", L"Event", WS_VISIBLE | WS_CHILD | BS_RADIOBUTTON, 10, 70, 60, 30,
 				hwnd, (HMENU)ID_EVENT_BUTTON, hInst, NULL);
-			cs_btn = CreateWindow(L"BUTTON", L"Critical Section", WS_VISIBLE | WS_CHILD | BS_RADIOBUTTON, 10, 70, 120, 30,
+			cs_btn = CreateWindow(L"BUTTON", L"Critical Section", WS_VISIBLE | WS_CHILD | BS_RADIOBUTTON, 10, 30, 120, 30,
 				hwnd, (HMENU)ID_CS_BUTTON, hInst, NULL);
 			start_btn = CreateWindow(L"BUTTON", L"Start", WS_VISIBLE | WS_CHILD | WS_BORDER, 200, 500, 100, 30,
 				hwnd, (HMENU)ID_START_BUTTON, hInst, NULL);
 			stop_btn = CreateWindow(L"BUTTON", L"Stop", WS_VISIBLE | WS_CHILD | WS_BORDER, 500, 500, 100, 30,
 				hwnd, (HMENU)ID_STOP_BUTTON, hInst, NULL);
 
-			SendMessage(event_btn, BM_SETCHECK, 1, NULL);
-			SendMessage(cs_btn, BM_SETCHECK, 0, NULL);
+			SendMessage(cs_btn, BM_SETCHECK, 1, NULL);
+			SendMessage(event_btn, BM_SETCHECK, 0, NULL);
 
 			//Define start coords of the train.
 			coords.x = 5;
-			coords.y = 150;
+			coords.y = 300;
+			start_coords = coords;
 
 			break;
 		}
@@ -50,71 +55,44 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			{
 				case ID_EVENT_BUTTON:
 				{
-					SendMessage(event_btn, BM_SETCHECK, 1, NULL);
-					SendMessage(cs_btn, BM_SETCHECK, 0, NULL);
+					if (previous_choice) {
+
+						terminated = TRUE;
+
+						WaitForMultipleObjects(3, threads, TRUE, INFINITE);
+						DeleteCriticalSection(&cs);
+
+						SendMessage(event_btn, BM_SETCHECK, 1, NULL);
+						SendMessage(cs_btn, BM_SETCHECK, 0, NULL);
+
+						threads[0] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
+						threads[1] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
+						threads[2] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
+
+						previous_choice = FALSE;
+					}
 					break;
 				}
 
 				case ID_CS_BUTTON:
 				{
-					SendMessage(event_btn, BM_SETCHECK, 0, NULL);
-					SendMessage(cs_btn, BM_SETCHECK, 1, NULL);
-					break;
-				}
+					if (!previous_choice) {
+						SendMessage(event_btn, BM_SETCHECK, 0, NULL);
+						SendMessage(cs_btn, BM_SETCHECK, 1, NULL);
 
-				case ID_START_BUTTON:
-				{
-					if (stop_flag)
-					{
-						if (thrds_created)
-						{
-							if ((SendMessage(event_btn, BM_GETCHECK, 1, NULL) && !previous_choice) ||
-								((SendMessage(cs_btn, BM_GETCHECK, 1, NULL) && previous_choice)))
-							{
-								ResumeThread(threads[0]);
-								ResumeThread(threads[1]);
-								ResumeThread(threads[2]);
-							}
-							else if (SendMessage(event_btn, BM_GETCHECK, 1, NULL) && previous_choice)
-							{
-								TerminateThread(threads[0], 0);
-								TerminateThread(threads[1], 0);
-								TerminateThread(threads[2], 0);
+						TerminateThread(threads[0], 0);
+						TerminateThread(threads[1], 0);
+						TerminateThread(threads[2], 0);
 
-								threads[0] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
-								threads[1] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
-								threads[2] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
-							}
-							else if (SendMessage(cs_btn, BM_GETCHECK, 1, NULL) && !previous_choice)
-							{
-								TerminateThread(threads[0], 0);
-								TerminateThread(threads[1], 0);
-								TerminateThread(threads[2], 0);
+						InitializeCriticalSection(&cs);
 
-								threads[0] = CreateThread(NULL, NULL, MoveTrain_CriticalSection, NULL, NULL, NULL);
-								threads[1] = CreateThread(NULL, NULL, MoveTrain_CriticalSection, NULL, NULL, NULL);
-								threads[2] = CreateThread(NULL, NULL, MoveTrain_CriticalSection, NULL, NULL, NULL);
-							}
-						}
-						else
-						{
-							threads[0] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
-							threads[1] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
-							threads[2] = CreateThread(NULL, NULL, MoveTrain_EventSynchronization, NULL, NULL, NULL);
-						}
-						stop_flag = FALSE;
-					}
-					break;
-				}
+						terminated = FALSE;
 
-				case ID_STOP_BUTTON:
-				{
-					if (!stop_flag)
-					{
-						SuspendThread(threads[0]);
-						SuspendThread(threads[1]);
-						SuspendThread(threads[2]);
-						stop_flag = TRUE;
+						threads[0] = CreateThread(NULL, NULL, MoveTrain_CriticalSection, NULL, NULL, NULL);
+						threads[1] = CreateThread(NULL, NULL, MoveTrain_CriticalSection, NULL, NULL, NULL);
+						threads[2] = CreateThread(NULL, NULL, MoveTrain_CriticalSection, NULL, NULL, NULL);
+
+						previous_choice = TRUE;
 					}
 					break;
 				}
@@ -209,22 +187,66 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 DWORD WINAPI MoveTrain_EventSynchronization(LPVOID lpParam) {
 	HDC hdc = GetDC(hWnd);
-
+	while (TRUE) {
+		WaitForSingleObject(event, INFINITE);
+		ResetEvent(event);
+		coords.x += 10;
+		if (coords.x + 80 > 780) {
+			RECT rect;
+			GetClientRect(hWnd, &rect);
+			rect.top = coords.y;
+			rect.left = coords.x - 22;
+			rect.bottom = coords.y + 70;
+			rect.right = coords.x + 62;
+			FillRect(hdc, &rect, (HBRUSH)(COLOR_WINDOW + 1));
+			coords.x = 5;
+		}
+		DrawTrain(hdc);
+		Sleep(1000);
+		SetEvent(event);
+	}
 	return 0;
 }
 
 DWORD WINAPI MoveTrain_CriticalSection(LPVOID lpParam) {
 	HDC hdc = GetDC(hWnd);
-
+	while (!terminated) {
+		EnterCriticalSection(&cs);
+		if (!terminated) {
+			coords.x += 10;
+			if (coords.x + 80 > 780) {
+				RECT rect;
+				GetClientRect(hWnd, &rect);
+				rect.top = coords.y;
+				rect.left = coords.x - 22;
+				rect.bottom = coords.y + 70;
+				rect.right = coords.x + 62;
+				FillRect(hdc, &rect, (HBRUSH)(COLOR_WINDOW + 1));
+				coords.x = 5;
+			}
+			DrawTrain(hdc);
+			Sleep(1000);
+		}
+		LeaveCriticalSection(&cs);
+	}
 	return 0;
 }
 
-void DrawTrain(HDC hdc, int x, int y)
+void DrawTrain(HDC hdc)
 {
 	HPEN hPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
 	HBRUSH hBrush = CreateSolidBrush(RGB(200, 100, 0));
+	SelectObject(hdc, hBrush);
 
-	POINT train[11];
+	RECT rect;
+	GetClientRect(hWnd, &rect);
+	rect.top = coords.y;
+	rect.left = coords.x - 20;
+	rect.bottom = coords.y + 70;
+	rect.right = coords.x + 60;
+	FillRect(hdc, &rect, (HBRUSH)(COLOR_WINDOW + 1));
+
+	POINT train[10];
 
 	train[0].x = coords.x;
 	train[0].y = coords.y;
@@ -233,33 +255,34 @@ void DrawTrain(HDC hdc, int x, int y)
 	train[1].y = coords.y;
 
 	train[2].x = coords.x + 40;
-	train[2].y = coords.y - 30;
+	train[2].y = coords.y + 30;
 
 	train[3].x = coords.x + 60;
-	train[3].y = coords.y - 30;
+	train[3].y = coords.y + 30;
 
 	train[4].x = coords.x + 60;
-	train[4].y = coords.y - 20;
+	train[4].y = coords.y + 10;
 
 	train[5].x = coords.x + 70;
-	train[5].y = coords.y - 20;
+	train[5].y = coords.y + 10;
 
 	train[6].x = coords.x + 70;
-	train[6].y = coords.y - 30;
+	train[6].y = coords.y + 30;
 
 	train[7].x = coords.x + 80;
-	train[7].y = coords.y - 30;
+	train[7].y = coords.y + 30;
 
 	train[8].x = coords.x + 80;
-	train[8].y = coords.y - 60;
+	train[8].y = coords.y + 60;
 
 	train[9].x = coords.x;
-	train[9].y = coords.y - 60;
+	train[9].y = coords.y + 60;
 
-	Polyline(hdc, train, 10);
+	Polygon(hdc, train, 10);
 
 	hBrush = CreateSolidBrush(RGB(255, 0, 0));
+	SelectObject(hdc, hBrush);
 
-	Ellipse(hdc, coords.x + 10, coords.y - 50, coords.x + 30, coords.y - 70);
-	Ellipse(hdc, coords.x + 50, coords.y - 50, coords.x + 70, coords.y - 70);
+	Ellipse(hdc, coords.x + 10, coords.y + 50, coords.x + 30, coords.y + 70);
+	Ellipse(hdc, coords.x + 50, coords.y + 50, coords.x + 70, coords.y + 70);
 }
