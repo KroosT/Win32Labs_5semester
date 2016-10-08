@@ -8,10 +8,11 @@
 LPCWSTR g_szClassName = L"myWindowClass";
 HINSTANCE hInst;
 HANDLE threads[3];
-HWND hWnd, event_btn, cs_btn, start_btn, stop_btn;
+HWND hWnd, event_btn, cs_btn;
 bool stop_flag = TRUE;
 bool thrds_created = FALSE;
-bool terminated = FALSE;
+bool cs_threads_terminated = FALSE;
+bool event_threads_terminated = FALSE;
 POINT coords;
 POINT start_coords;
 CRITICAL_SECTION cs;
@@ -34,18 +35,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				hwnd, (HMENU)ID_EVENT_BUTTON, hInst, NULL);
 			cs_btn = CreateWindow(L"BUTTON", L"Critical Section", WS_VISIBLE | WS_CHILD | BS_RADIOBUTTON, 10, 30, 120, 30,
 				hwnd, (HMENU)ID_CS_BUTTON, hInst, NULL);
-			start_btn = CreateWindow(L"BUTTON", L"Start", WS_VISIBLE | WS_CHILD | WS_BORDER, 200, 500, 100, 30,
-				hwnd, (HMENU)ID_START_BUTTON, hInst, NULL);
-			stop_btn = CreateWindow(L"BUTTON", L"Stop", WS_VISIBLE | WS_CHILD | WS_BORDER, 500, 500, 100, 30,
-				hwnd, (HMENU)ID_STOP_BUTTON, hInst, NULL);
 
 			SendMessage(cs_btn, BM_SETCHECK, 1, NULL);
 			SendMessage(event_btn, BM_SETCHECK, 0, NULL);
 
 			//Define start coords of the train.
 			coords.x = 5;
-			coords.y = 300;
+			coords.y = 200;
 			start_coords = coords;
+
+			//Create event.
+			event = CreateEvent(NULL, FALSE, TRUE, NULL);
 
 			break;
 		}
@@ -57,8 +57,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				{
 					if (previous_choice) {
 
-						terminated = TRUE;
+						cs_threads_terminated = TRUE;
+						event_threads_terminated = FALSE;
 
+						//Wait for threads terminated.
 						WaitForMultipleObjects(3, threads, TRUE, INFINITE);
 						DeleteCriticalSection(&cs);
 
@@ -80,14 +82,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 						SendMessage(event_btn, BM_SETCHECK, 0, NULL);
 						SendMessage(cs_btn, BM_SETCHECK, 1, NULL);
 
-						TerminateThread(threads[0], 0);
-						TerminateThread(threads[1], 0);
-						TerminateThread(threads[2], 0);
+						event_threads_terminated = TRUE;
+
+						WaitForMultipleObjects(3, threads, TRUE, INFINITE);
+						cs_threads_terminated = FALSE;
 
 						InitializeCriticalSection(&cs);
-
-						terminated = FALSE;
-
+									
 						threads[0] = CreateThread(NULL, NULL, MoveTrain_CriticalSection, NULL, NULL, NULL);
 						threads[1] = CreateThread(NULL, NULL, MoveTrain_CriticalSection, NULL, NULL, NULL);
 						threads[2] = CreateThread(NULL, NULL, MoveTrain_CriticalSection, NULL, NULL, NULL);
@@ -187,7 +188,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 DWORD WINAPI MoveTrain_EventSynchronization(LPVOID lpParam) {
 	HDC hdc = GetDC(hWnd);
-	while (TRUE) {
+	while (!event_threads_terminated) {
 		WaitForSingleObject(event, INFINITE);
 		ResetEvent(event);
 		coords.x += 10;
@@ -210,9 +211,9 @@ DWORD WINAPI MoveTrain_EventSynchronization(LPVOID lpParam) {
 
 DWORD WINAPI MoveTrain_CriticalSection(LPVOID lpParam) {
 	HDC hdc = GetDC(hWnd);
-	while (!terminated) {
+	while (!cs_threads_terminated) {
 		EnterCriticalSection(&cs);
-		if (!terminated) {
+		if (!cs_threads_terminated) {
 			coords.x += 10;
 			if (coords.x + 80 > 780) {
 				RECT rect;
