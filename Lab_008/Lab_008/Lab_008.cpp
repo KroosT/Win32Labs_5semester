@@ -1,6 +1,15 @@
 #include <Windows.h>
+#include <TlHelp32.h>
 
+#define ID_LB1 101
+#define ID_LB2 102
+
+HINSTANCE hInst;
 LPCWSTR g_szClassName = L"myWindowClass";
+HWND lb1, lb2;
+
+void GetListOfProcesses();
+void GetListOfModules();
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -8,6 +17,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_CREATE:
 	{
+		lb1 = CreateWindow(L"LISTBOX", L"LB1", WS_VISIBLE | WS_CHILD | WS_BORDER | WS_VSCROLL,
+			5, 5, 380, 550, hwnd, (HMENU) ID_LB1, hInst, NULL);
+		lb2 = CreateWindow(L"LISTBOX", L"LB2", WS_VISIBLE | WS_CHILD | WS_BORDER,
+			395, 5, 380, 550, hwnd, (HMENU)ID_LB2, hInst, NULL);
+		GetListOfProcesses();
 
 		break;
 	}
@@ -43,6 +57,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	HWND hwnd;
 	MSG Msg;
 
+	hInst = hInstance;
 	wc.cbSize = sizeof(WNDCLASSEX);
 	wc.style = 0;
 	wc.lpfnWndProc = WndProc;
@@ -87,4 +102,46 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		DispatchMessage(&Msg);
 	}
 	return Msg.wParam;
+}
+
+void GetListOfProcesses() {
+	PROCESSENTRY32 peProcessEntry;
+	TCHAR szBuff[1024];
+	HANDLE const hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+
+	if (INVALID_HANDLE_VALUE == hSnapshot) {
+		return;
+	}
+
+	peProcessEntry.dwSize = sizeof(PROCESSENTRY32);
+	Process32First(hSnapshot, &peProcessEntry);
+
+	do {
+		wsprintf(szBuff, L"%08X %s\r\n",
+			peProcessEntry.th32ProcessID, peProcessEntry.szExeFile);
+		SendMessage(lb1, LB_ADDSTRING, NULL, (LPARAM)szBuff);
+	} while (Process32Next(hSnapshot, &peProcessEntry));
+
+	CloseHandle(hSnapshot);
+}
+
+void GetListOfModules() {
+	SendMessage(lb2, LB_RESETCONTENT, NULL, NULL);
+	MODULEENTRY32 meModuleEntry;
+	TCHAR szBuff[1024];
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, NULL);
+
+	if (INVALID_HANDLE_VALUE == hSnapshot) {
+		return;
+	}
+
+	meModuleEntry.dwSize = sizeof(MODULEENTRY32);
+	Module32First(hSnapshot, &meModuleEntry);
+		
+	do {
+		wsprintf(szBuff, L"%08X, %08X, %s\r\n",
+			meModuleEntry.modBaseAddr, meModuleEntry.modBaseSize,
+			meModuleEntry.szModule);
+		SendMessage(lb2, LB_ADDSTRING, NULL, (LPARAM)szBuff);
+	} while (Module32Next(hSnapshot, &meModuleEntry));
 }
